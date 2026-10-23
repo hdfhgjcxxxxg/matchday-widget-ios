@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 30
 
     steps:
@@ -21,7 +21,9 @@ jobs:
         shell: bash
         run: |
           ls /Applications | grep -i xcode || true
-          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer || true
+          LATEST="$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -n 1)"
+          echo "Latest Xcode app: ${LATEST:-none}"
+          if [ -n "${LATEST:-}" ]; then sudo xcode-select -s "$LATEST/Contents/Developer"; fi
           xcodebuild -version
 
       - name: Install XcodeGen
