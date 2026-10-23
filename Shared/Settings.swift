@@ -30,7 +30,7 @@ public enum WidgetFontChoice: String, Codable, CaseIterable, Identifiable {
         }
     }
     /// テキストに適用するフォント。ドット系は等幅・太字で代替表現する。
-    public func font(size: CGFloat, weight: Font.Weight = .regular) -> Font {
+    public func makeFont(size: CGFloat, weight: Font.Weight = .regular) -> Font {
         switch self {
         case .standard: return .system(size: size, weight: weight)
         case .nType82: return .system(size: size, weight: weight, design: .rounded)
