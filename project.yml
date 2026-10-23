@@ -1,0 +1,56 @@
+name: MatchDayWidget
+options:
+  bundleIdPrefix: com.example
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "13.0"
+    CURRENT_PROJECT_VERSION: "2000000026"
+targets:
+  MatchDayWidget:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+      - path: Shared
+    entitlements:
+      path: App/MatchDayWidget.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.example.matchdaywidget
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: MatchDay Widget
+        UILaunchStoryboardName: ""
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        LSApplicationQueriesSchemes: [fotmob, sofascore, flashscore, livescore]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.matchdaywidget
+    dependencies:
+      - target: MatchDayWidgetExtension
+        embed: true
+  MatchDayWidgetExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Widget
+      - path: Shared
+    entitlements:
+      path: Widget/MatchDayWidgetExtension.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.example.matchdaywidget
+    info:
+      path: Widget/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.matchdaywidget.widget
