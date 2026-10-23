@@ -181,34 +181,34 @@ struct TeamWidgetView: View {
         VStack(alignment: .leading, spacing: style.scaled(4)) {
             if let team = entry.team {
                 Text(team.name)
-                    .font(style.font == .standard ? .system(size: style.scaled(15), weight: .bold) : style.font(size: style.scaled(15), weight: .bold))
+                    .font(style.font.makeFont(size: style.scaled(15), weight: .bold))
                     .lineLimit(1)
                 if let f = entry.fixture {
                     Text("\(f.homeAwayLabel(for: team.name)). \(f.opponent(of: team.name))")
-                        .font(style.font(size: style.scaled(13)))
+                        .font(style.font.makeFont(size: style.scaled(13)))
                         .lineLimit(1)
                     Text(FormatHelp.kickoffText(f.kickoff))
-                        .font(style.font(size: style.scaled(12)))
+                        .font(style.font.makeFont(size: style.scaled(12)))
                         .foregroundStyle(.secondary)
                     if f.status == .live {
                         Text("LIVE \(f.liveMinute ?? "")  \(f.homeScore ?? 0) - \(f.awayScore ?? 0)")
-                            .font(style.font(size: style.scaled(13), weight: .bold)).foregroundStyle(.red)
+                            .font(style.font.makeFont(size: style.scaled(13), weight: .bold)).foregroundStyle(.red)
                     } else if style.showCountdown, let k = f.kickoff, k > Date() {
                         Text(timerInterval: Date()...k, countsDown: true)
-                            .font(style.font(size: style.scaled(13), weight: .semibold))
+                            .font(style.font.makeFont(size: style.scaled(13), weight: .semibold))
                             .monospacedDigit()
                     }
                     if !f.competitionName.isEmpty {
-                        Text(f.competitionName).font(style.font(size: style.scaled(11))).foregroundStyle(.secondary).lineLimit(1)
+                        Text(f.competitionName).font(style.font.makeFont(size: style.scaled(11))).foregroundStyle(.secondary).lineLimit(1)
                     }
                 } else {
-                    Text("次節を取得できません").font(style.font(size: style.scaled(12))).foregroundStyle(.secondary)
+                    Text("次節を取得できません").font(style.font.makeFont(size: style.scaled(12))).foregroundStyle(.secondary)
                 }
             } else {
-                Text("アプリでチームをお気に入りに追加してください").font(style.font(size: style.scaled(12)))
+                Text("アプリでチームをお気に入りに追加してください").font(style.font.makeFont(size: style.scaled(12)))
             }
             Spacer(minLength: 0)
-            Text(FormatHelp.updatedText(entry.date)).font(style.font(size: style.scaled(10))).foregroundStyle(.secondary)
+            Text(FormatHelp.updatedText(entry.date)).font(style.font.makeFont(size: style.scaled(10))).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .padding(style.scaled(10))
@@ -225,23 +225,23 @@ struct PlayerWidgetView: View {
         let bg = Color(hex: style.backgroundColorHex)
         VStack(alignment: .leading, spacing: style.scaled(4)) {
             if let p = entry.player {
-                Text(p.name).font(style.font(size: style.scaled(15), weight: .bold)).lineLimit(1)
-                if let team = p.teamName { Text(team).font(style.font(size: style.scaled(12))).foregroundStyle(.secondary) }
+                Text(p.name).font(style.font.makeFont(size: style.scaled(15), weight: .bold)).lineLimit(1)
+                if let team = p.teamName { Text(team).font(style.font.makeFont(size: style.scaled(12))).foregroundStyle(.secondary) }
                 if let ex = entry.extras {
-                    if let r = ex.rating { Text(String(format: "レーティング %.2f", r)).font(style.font(size: style.scaled(12))) }
+                    if let r = ex.rating { Text(String(format: "レーティング %.2f", r)).font(style.font.makeFont(size: style.scaled(12))) }
                     if let f = ex.nextFixture {
                         Text("次節: \(f.opponent(of: p.teamName ?? "")) ・ \(FormatHelp.kickoffText(f.kickoff))")
-                            .font(style.font(size: style.scaled(12))).lineLimit(2)
+                            .font(style.font.makeFont(size: style.scaled(12))).lineLimit(2)
                         if style.showCountdown, let k = f.kickoff, k > Date() {
-                            Text(FormatHelp.countdownText(to: k)).font(style.font(size: style.scaled(12), weight: .semibold))
+                            Text(FormatHelp.countdownText(to: k)).font(style.font.makeFont(size: style.scaled(12), weight: .semibold))
                         }
                     }
                 }
             } else {
-                Text("アプリで選手をお気に入りに追加してください").font(style.font(size: style.scaled(12)))
+                Text("アプリで選手をお気に入りに追加してください").font(style.font.makeFont(size: style.scaled(12)))
             }
             Spacer(minLength: 0)
-            Text(FormatHelp.updatedText(entry.date)).font(style.font(size: style.scaled(10))).foregroundStyle(.secondary)
+            Text(FormatHelp.updatedText(entry.date)).font(style.font.makeFont(size: style.scaled(10))).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .padding(style.scaled(10))
@@ -257,23 +257,23 @@ struct LeagueWidgetView: View {
         let bg = Color(hex: style.backgroundColorHex)
         VStack(alignment: .leading, spacing: style.scaled(3)) {
             if let league = entry.league {
-                Text(league.name).font(style.font(size: style.scaled(14), weight: .bold)).lineLimit(1)
+                Text(league.name).font(style.font.makeFont(size: style.scaled(14), weight: .bold)).lineLimit(1)
                 if let round = entry.round {
                     ForEach(round.fixtures.prefix(4)) { f in
                         HStack(spacing: 4) {
-                            Text("\(f.homeTeam) v \(f.awayTeam)").font(style.font(size: style.scaled(11))).lineLimit(1)
+                            Text("\(f.homeTeam) v \(f.awayTeam)").font(style.font.makeFont(size: style.scaled(11))).lineLimit(1)
                             Spacer()
-                            Text(FormatHelp.kickoffText(f.kickoff)).font(style.font(size: style.scaled(10))).foregroundStyle(.secondary)
+                            Text(FormatHelp.kickoffText(f.kickoff)).font(style.font.makeFont(size: style.scaled(10))).foregroundStyle(.secondary)
                         }
                     }
                 } else {
-                    Text("日程を取得できません").font(style.font(size: style.scaled(12))).foregroundStyle(.secondary)
+                    Text("日程を取得できません").font(style.font.makeFont(size: style.scaled(12))).foregroundStyle(.secondary)
                 }
             } else {
-                Text("アプリでリーグをお気に入りに追加してください").font(style.font(size: style.scaled(12)))
+                Text("アプリでリーグをお気に入りに追加してください").font(style.font.makeFont(size: style.scaled(12)))
             }
             Spacer(minLength: 0)
-            Text(FormatHelp.updatedText(entry.date)).font(style.font(size: style.scaled(10))).foregroundStyle(.secondary)
+            Text(FormatHelp.updatedText(entry.date)).font(style.font.makeFont(size: style.scaled(10))).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .padding(style.scaled(10))
