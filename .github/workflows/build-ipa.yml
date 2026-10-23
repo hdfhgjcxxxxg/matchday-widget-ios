@@ -1,0 +1,112 @@
+name: Build IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-14
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Select Xcode
+        shell: bash
+        run: |
+          ls /Applications | grep -i xcode || true
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer || true
+          xcodebuild -version
+
+      - name: Install XcodeGen
+        shell: bash
+        run: brew install xcodegen
+
+      - name: Generate project
+        shell: bash
+        run: xcodegen generate
+
+      - name: Build app (unsigned)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          xcodebuild build \
+            -project MatchDayWidget.xcodeproj \
+            -scheme MatchDayWidget \
+            -sdk iphoneos \
+            -configuration Release \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_IDENTITY="" \
+            | tee build/xcodebuild.log
+
+      - name: Print failure diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          set +e
+          echo "=== xcodebuild.log (errors) ==="
+          grep -n "error:" build/xcodebuild.log | head -n 100 || true
+          exit 0
+
+      - name: Package IPA
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP="build/DerivedData/Build/Products/Release-iphoneos/MatchDayWidget.app"
+          test -d "$APP"
+          rm -rf Payload
+          mkdir -p Payload
+          cp -R "$APP" Payload/
+          /usr/bin/zip -qry MatchDayWidget.ipa Payload
+          test -s MatchDayWidget.ipa
+          shasum -a 256 MatchDayWidget.ipa > MatchDayWidget.ipa.sha256
+          ls -lh MatchDayWidget.ipa
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MatchDayWidget-ipa
+          path: |
+            MatchDayWidget.ipa
+            MatchDayWidget.ipa.sha256
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish IPA to GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="v13.0-2000000026"
+          SHA256="$(cut -d' ' -f1 MatchDayWidget.ipa.sha256)"
+          NOTES=$(cat <<EOF
+          iOS版 MatchDay Widget の未署名IPAです。SideStore / AltStore 等で再署名してインストールしてください。
+
+          - Version: 13.0
+          - Commit: ${GITHUB_SHA}
+          - SHA-256: ${SHA256}
+          EOF
+          )
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" MatchDayWidget.ipa MatchDayWidget.ipa.sha256 \
+              --repo "$GITHUB_REPOSITORY" --clobber
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" \
+              --title "MatchDay Widget v13.0 (iOS)" \
+              --notes "$NOTES"
+          else
+            gh release create "$TAG" MatchDayWidget.ipa MatchDayWidget.ipa.sha256 \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "MatchDay Widget v13.0 (iOS)" \
+              --notes "$NOTES"
+          fi
