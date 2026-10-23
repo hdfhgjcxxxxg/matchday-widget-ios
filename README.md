@@ -25,3 +25,16 @@ open MatchDayWidget.xcodeproj
 ## 配布について
 当面は未署名 IPA を SideStore / AltStore 等で再署名してインストールする想定です。
 Apple Developer Program 登録後は、署名付きビルド / TestFlight へ切り替えます。
+
+### AltStore / SideStore への追加
+以下のソース URL を AltStore（Classic）または SideStore の「ソース」に追加すると、
+インストールとアップデートがアプリ内からできます。
+
+```
+https://raw.githubusercontent.com/hdfhgjcxxxxg/matchday-widget-ios/main/altstore-source.json
+```
+
+IPA を直接入れる場合は、GitHub Release（v13.0-2000000026）の `MatchDayWidget.ipa` を使ってください。
+
+※ AltStore PAL で配布するには Apple の公証（Apple Developer Program 登録が必要）が前提のため、
+現時点では未対応です。対応手順は FEATURE_PARITY.md の配布セクションの方針どおり進めます。
