@@ -25,19 +25,19 @@ public struct FootballService {
 
     private func searchTeamsFotMob(term: String) async throws -> [FavoriteTeam] {
         let root = try await fotmob.searchSuggest(term: term)
-        var suggestions: [Any] = []
-        JSONHelp.findAll(root, key: "suggestions", into: &suggestions)
+        // suggest の応答形式は {"data":[...]} / {"suggestions":[...]} の両形式があるため全体を走査する
         var out: [FavoriteTeam] = []
+        var seen = Set<Int>()
         func walk(_ node: Any) {
             if let d = node as? [String: Any] {
                 let type = JSONHelp.string(d["type"]) ?? ""
-                if type == "team", let id = JSONHelp.int(d["id"]), let name = JSONHelp.string(d["name"]) {
+                if type == "team", let id = JSONHelp.int(d["id"]), let name = JSONHelp.string(d["name"]), seen.insert(id).inserted {
                     out.append(FavoriteTeam(fotmobId: id, name: name))
                 }
                 for v in d.values { walk(v) }
             } else if let a = node as? [Any] { for v in a { walk(v) } }
         }
-        for s in suggestions { walk(s) }
+        walk(root)
         return out
     }
 
@@ -126,8 +126,10 @@ public struct FootballService {
         var out: [FavoriteLeague] = []
         func walk(_ node: Any) {
             if let d = node as? [String: Any] {
+                // "leagues" 配列を持つ国などのコンテナ自体はリーグとして拾わない
                 if let id = JSONHelp.int(d["id"]), let name = JSONHelp.string(d["name"]),
-                   JSONHelp.dict(d["parentLeague"]) == nil, d["localizedName"] != nil || d["ccode"] != nil {
+                   JSONHelp.dict(d["parentLeague"]) == nil, d["leagues"] == nil,
+                   d["localizedName"] != nil || d["ccode"] != nil {
                     out.append(FavoriteLeague(fotmobId: id, name: name, country: JSONHelp.string(d["ccode"])))
                 }
                 for v in d.values { walk(v) }
@@ -156,8 +158,11 @@ public struct FootballService {
         var candidates: [Fixture] = []
         if mode.allowsFotMob, let id = team.fotmobId, let f = try? await nextFixtureFotMob(teamId: id) { candidates.append(f) }
         if mode.allowsSofaScore, let id = team.sofascoreId, let f = try? await nextFixtureSofa(teamId: id) { candidates.append(f) }
-        // 最も早いキックオフを採用 (Android版 mergeFixtureProviders と同じ方針)
-        let picked = candidates.min { ($0.kickoff ?? .distantFuture) < ($1.kickoff ?? .distantFuture) }
+        // 実施中・未来の試合の中で最も早いキックオフを採用する。
+        // 単純な min だと終了済みの過去試合が「次節」として選ばれてしまう。
+        let upcoming = candidates.filter { ($0.kickoff ?? .distantPast) >= Date().addingTimeInterval(-3 * 3600) && $0.status != .finished }
+        let pool = upcoming.isEmpty ? candidates : upcoming
+        let picked = pool.min { ($0.kickoff ?? .distantFuture) < ($1.kickoff ?? .distantFuture) }
         if let picked { SharedStore.shared.cacheFixture(picked, key: team.id) }
         return picked ?? SharedStore.shared.cachedFixture(key: team.id)
     }
@@ -166,14 +171,27 @@ public struct FootballService {
         let root = try await fotmob.team(id: teamId)
         var matches: [Any] = []
         JSONHelp.findAll(root, key: "nextMatch", into: &matches)
-        if matches.isEmpty { JSONHelp.findAll(root, key: "fixtures", into: &matches) }
+        if !matches.isEmpty {
+            for m in matches {
+                if let d = JSONHelp.dict(m), let f = parseFotMobMatch(d) { return f }
+                if let a = JSONHelp.array(m) {
+                    for item in a { if let d = JSONHelp.dict(item), let f = parseFotMobMatch(d) { return f } }
+                }
+            }
+            return nil
+        }
+        // nextMatch が無い場合のみ fixtures にフォールバックする。
+        // fixtures (allMatches) は過去の試合から並ぶため、終了済みは後回しにして未終了の最も早い試合を選ぶ。
+        JSONHelp.findAll(root, key: "fixtures", into: &matches)
+        var parsed: [Fixture] = []
         for m in matches {
-            if let d = JSONHelp.dict(m), let f = parseFotMobMatch(d) { return f }
+            if let d = JSONHelp.dict(m), let f = parseFotMobMatch(d) { parsed.append(f) }
             if let a = JSONHelp.array(m) {
-                for item in a { if let d = JSONHelp.dict(item), let f = parseFotMobMatch(d) { return f } }
+                for item in a { if let d = JSONHelp.dict(item), let f = parseFotMobMatch(d) { parsed.append(f) } }
             }
         }
-        return nil
+        let active = parsed.filter { $0.status != .finished }
+        return (active.isEmpty ? parsed : active).min { ($0.kickoff ?? .distantFuture) < ($1.kickoff ?? .distantFuture) }
     }
 
     private func parseFotMobMatch(_ d: [String: Any]) -> Fixture? {
